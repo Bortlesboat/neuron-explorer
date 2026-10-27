@@ -24,6 +24,8 @@ from rank import compute_units  # noqa: E402
 from runtime import CACHE, NO_MODEL, Runtime  # noqa: E402
 
 RUNS, STATS = os.path.join(ROOT, "runs"), os.path.join(ROOT, "stats")
+# the agent's neuronary.org tools (agent_mcp.py) read the person's token from here when set
+NEURONARY_ENV = {k: os.environ[k] for k in ("NEURONARY_TOKEN", "NEURONARY_API") if os.environ.get(k)}
 NAMES = os.path.join(ROOT, "explorer", "names.json")
 PORT = int(os.environ.get("PORT", 8791))
 _cfg = AutoConfig.from_pretrained("Qwen/Qwen3.5-4B").get_text_config()
@@ -1395,7 +1397,7 @@ CHAT_IDLE = 30 * 60  # seconds without listeners or turns before a chat's input 
 
 def _claude_cmd(cid):
     mcp = {"mcpServers": {"explorer": {"command": sys.executable, "args": [os.path.join(ROOT, "explorer", "agent_mcp.py")],
-                                       "env": {"EXPLORER_URL": f"http://127.0.0.1:{PORT}", "EXPLORER_CHAT": cid}}}}
+                                       "env": {"EXPLORER_URL": f"http://127.0.0.1:{PORT}", "EXPLORER_CHAT": cid, **NEURONARY_ENV}}}}
     cmd = ["claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
            "--system-prompt-file", agent_prompt_file(), "--mcp-config", json.dumps(mcp), "--strict-mcp-config",
            # file tools and a shell, so it can run scripts against this server (e.g. score a file it shouldn't read)
@@ -1632,7 +1634,7 @@ async def _ensure_codex(c):
     c["pump"] = asyncio.create_task(_codex_pump(c, proc))
     await _rpc(c, "initialize", {"clientInfo": {"name": "neuron-explorer", "version": "0.1"}})
     mcp = {"explorer": {"command": sys.executable, "args": [os.path.join(ROOT, "explorer", "agent_mcp.py")],
-                        "env": {"EXPLORER_URL": f"http://127.0.0.1:{PORT}", "EXPLORER_CHAT": c["session"]}}}
+                        "env": {"EXPLORER_URL": f"http://127.0.0.1:{PORT}", "EXPLORER_CHAT": c["session"], **NEURONARY_ENV}}}
     opts = {"cwd": AGENT_DIR, "approvalPolicy": "never", "sandbox": "danger-full-access", "config": {"mcp_servers": mcp},
             "developerInstructions": open(agent_prompt_file()).read() + CODEX_NOTE.replace("{ROOT}", ROOT)}
     thread = _meta().get(c["session"], {}).get("thread")
