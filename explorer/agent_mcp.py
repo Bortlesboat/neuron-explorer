@@ -63,7 +63,8 @@ TOOLS = [
      "and pushed down (greedy). Steer one neuron (layer, n) or several at once (neurons: [{layer, n, dose?, mode?}]; all "
      "are applied together, each reversed in the down row; a negative per-neuron dose pushes that one the other way). "
      "dose in units of the layer's median residual norm for mode 'add' (0.8 is the steer-lens push; 2-3 is strong), or "
-     "a multiplier for mode 'mul'. Needs the live model; errors if it is off.",
+     "a multiplier for mode 'mul'. Greedy by default; temperature, repetition_penalty and seed match a recipe's published "
+     "sampling (the result says which was used). Needs the live model; errors if it is off.",
      "inputSchema": {"type": "object", "properties": {**LN, "prompt": {"type": "string"},
                                                        "neurons": {"type": "array", "items": {"type": "object", "properties": {
                                                            **LN, "dose": {"type": "number"},
@@ -71,7 +72,13 @@ TOOLS = [
                                                            "required": ["layer", "n"]}},
                                                        "dose": {"type": "number", "default": 0.8},
                                                        "mode": {"type": "string", "enum": ["add", "mul"], "default": "add"},
-                                                       "max_new": {"type": "integer", "default": 150}},
+                                                       "max_new": {"type": "integer", "default": 150},
+                                                       "temperature": {"type": "number", "default": 0,
+                                                                       "description": "0 = greedy; e.g. 0.7 to match a recipe's sampling"},
+                                                       "repetition_penalty": {"type": "number", "default": 1.0,
+                                                                              "description": "e.g. 1.1; >1 discourages repeats (loops)"},
+                                                       "seed": {"type": "integer", "default": 0,
+                                                                "description": "each row samples with this seed, so a run repeats exactly"}},
                      "required": ["prompt"]}},
     {"name": "activations", "description": "Live: the neuron's raw activation on every token of a text (chat=true wraps "
      "it as a user turn). Compare against act_range from `neuron`. Optional `neurons` [{layer, n, dose?, mode?}] are "

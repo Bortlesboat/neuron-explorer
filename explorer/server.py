@@ -882,7 +882,8 @@ def _live_off():
 
 @app.post("/api/agent/steer")
 async def agent_steer(req: Request):
-    """Steered rollouts for Claude: one prompt, greedy, pushed up / unsteered / pushed down; whole texts at once."""
+    """Steered rollouts for Claude: one prompt, pushed up / unsteered / pushed down; whole texts at once. Greedy unless
+    `temperature` is set; `repetition_penalty` and `seed` as in runtime.steer_multi."""
     b = await req.json()
     if off := _live_off():
         return off
@@ -892,12 +893,16 @@ async def agent_steer(req: Request):
     items = b.get("neurons") or [{"layer": b["layer"], "n": b["n"]}]
     pushes = [(int(x["layer"]), int(x["n"]), float(x.get("dose", dose)), x.get("mode", mode)) for x in items]
 
+    samp = {"temperature": float(b.get("temperature") or 0), "repetition_penalty": float(b.get("repetition_penalty") or 1.0),
+            "seed": int(b.get("seed") or 0)}
+
     def work():
-        for row, delta in rt.steer_multi(pushes, [[{"role": "user", "content": b["prompt"]}]] * 3, int(b.get("max_new", 150))):
+        for row, delta in rt.steer_multi(pushes, [[{"role": "user", "content": b["prompt"]}]] * 3, int(b.get("max_new", 150)), **samp):
             if row is not None:
                 texts[row] += delta
     await asyncio.to_thread(work)
     return {"prompt": b["prompt"], "steered": [{"neuron": f"L{l} N{n}", "dose": d, "mode": m} for l, n, d, m in pushes],
+            "sampling": samp if samp["temperature"] or samp["repetition_penalty"] != 1.0 else "greedy",
             "up": texts[0], "baseline": texts[1], "down": texts[2]}
 
 

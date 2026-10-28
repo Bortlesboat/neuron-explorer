@@ -580,9 +580,12 @@ class Runtime:
         Yields (row, text_delta), then (None, None)."""
         yield from self.steer_multi([(layer, n, dose, mode)], rows_messages, max_new, cancel)
 
-    def steer_multi(self, pushes, rows_messages, max_new=200, cancel=None):
+    def steer_multi(self, pushes, rows_messages, max_new=200, cancel=None, temperature=0.0, repetition_penalty=1.0, seed=0):
         """steer_stream for any number of neurons at once: pushes = [(layer, n, dose, mode)], all applied together.
-        Each is reversed in row 2 the same way a single neuron is (add: -dose; mul: x -dose)."""
+        Each is reversed in row 2 the same way a single neuron is (add: -dose; mul: x -dose). Greedy by default; with
+        temperature > 0 each row samples from its own generator seeded with `seed` (so a run repeats exactly).
+        repetition_penalty > 1 divides positive logits (multiplies negative ones) of every token already in the row's
+        prompt or output, as in transformers."""
         self.ensure_loaded()
         with self.lock:
             if cancel is not None and cancel.is_set():
@@ -598,6 +601,12 @@ class Runtime:
                 pos = (mask.cumsum(-1) - 1).clamp(min=0)
                 eos = self.tok.convert_tokens_to_ids("<|im_end|>")
                 done, out_ids, sent = [False] * 3, [[] for _ in range(3)], [""] * 3
+                gens = [torch.Generator().manual_seed(int(seed)) for _ in range(3)]
+                seen = None
+                if repetition_penalty != 1.0:
+                    seen = torch.zeros(3, self.model.lm_head.out_features, dtype=torch.bool, device=self.dev)
+                    for r, q in enumerate(seqs):
+                        seen[r, torch.tensor(q, device=self.dev)] = True
                 self._push = push
                 with torch.inference_mode():
                     out = self.model(input_ids=ids, attention_mask=mask, position_ids=pos, use_cache=True,
@@ -605,7 +614,17 @@ class Runtime:
                     for _ in range(max_new):
                         if cancel is not None and cancel.is_set():
                             break
-                        nxt = out.logits[:, -1].argmax(-1)
+                        logits = out.logits[:, -1].float()
+                        if seen is not None:
+                            pen = torch.where(logits > 0, logits / repetition_penalty, logits * repetition_penalty)
+                            logits = torch.where(seen, pen, logits)
+                        if temperature > 0:
+                            probs = torch.softmax(logits / temperature, -1).cpu()
+                            nxt = torch.cat([torch.multinomial(probs[r], 1, generator=gens[r]) for r in range(3)]).to(self.dev)
+                        else:
+                            nxt = logits.argmax(-1)
+                        if seen is not None:
+                            seen[torch.arange(3, device=self.dev), nxt] = True
                         for r in range(3):
                             if done[r]:
                                 continue
