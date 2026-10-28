@@ -63,7 +63,7 @@ TOOLS = [
      "and pushed down (greedy). Steer one neuron (layer, n) or several at once (neurons: [{layer, n, dose?, mode?}]; all "
      "are applied together, each reversed in the down row; a negative per-neuron dose pushes that one the other way). "
      "dose in units of the layer's median residual norm for mode 'add' (0.8 is the steer-lens push; 2-3 is strong), or "
-     "a multiplier for mode 'mul'. Greedy by default; temperature, repetition_penalty and seed match a recipe's published "
+     "a multiplier for mode 'mul'. Greedy by default; temperature, min_p, repetition_penalty and seed match a recipe's published "
      "sampling (the result says which was used). Needs the live model; errors if it is off.",
      "inputSchema": {"type": "object", "properties": {**LN, "prompt": {"type": "string"},
                                                        "neurons": {"type": "array", "items": {"type": "object", "properties": {
@@ -77,6 +77,8 @@ TOOLS = [
                                                                        "description": "0 = greedy; e.g. 0.7 to match a recipe's sampling"},
                                                        "repetition_penalty": {"type": "number", "default": 1.0,
                                                                               "description": "e.g. 1.1; >1 discourages repeats (loops)"},
+                                                       "min_p": {"type": "number", "default": 0,
+                                                                 "description": "with temperature: drop tokens below min_p x the top token's probability, e.g. 0.05"},
                                                        "seed": {"type": "integer", "default": 0,
                                                                 "description": "each row samples with this seed, so a run repeats exactly"}},
                      "required": ["prompt"]}},

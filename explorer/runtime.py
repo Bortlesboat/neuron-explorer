@@ -580,10 +580,11 @@ class Runtime:
         Yields (row, text_delta), then (None, None)."""
         yield from self.steer_multi([(layer, n, dose, mode)], rows_messages, max_new, cancel)
 
-    def steer_multi(self, pushes, rows_messages, max_new=200, cancel=None, temperature=0.0, repetition_penalty=1.0, seed=0):
+    def steer_multi(self, pushes, rows_messages, max_new=200, cancel=None, temperature=0.0, repetition_penalty=1.0, seed=0, min_p=0.0):
         """steer_stream for any number of neurons at once: pushes = [(layer, n, dose, mode)], all applied together.
         Each is reversed in row 2 the same way a single neuron is (add: -dose; mul: x -dose). Greedy by default; with
-        temperature > 0 each row samples from its own generator seeded with `seed` (so a run repeats exactly).
+        temperature > 0 each row samples from its own generator seeded with `seed` (so a run repeats exactly), keeping
+        only tokens with at least min_p times the top token's probability.
         repetition_penalty > 1 divides positive logits (multiplies negative ones) of every token already in the row's
         prompt or output, as in transformers."""
         self.ensure_loaded()
@@ -619,7 +620,11 @@ class Runtime:
                             pen = torch.where(logits > 0, logits / repetition_penalty, logits * repetition_penalty)
                             logits = torch.where(seen, pen, logits)
                         if temperature > 0:
-                            probs = torch.softmax(logits / temperature, -1).cpu()
+                            probs = torch.softmax(logits / temperature, -1)
+                            if min_p > 0:
+                                probs = torch.where(probs >= min_p * probs.max(-1, keepdim=True).values, probs, 0.0)
+                                probs = probs / probs.sum(-1, keepdim=True)
+                            probs = probs.cpu()
                             nxt = torch.cat([torch.multinomial(probs[r], 1, generator=gens[r]) for r in range(3)]).to(self.dev)
                         else:
                             nxt = logits.argmax(-1)

@@ -883,7 +883,7 @@ def _live_off():
 @app.post("/api/agent/steer")
 async def agent_steer(req: Request):
     """Steered rollouts for Claude: one prompt, pushed up / unsteered / pushed down; whole texts at once. Greedy unless
-    `temperature` is set; `repetition_penalty` and `seed` as in runtime.steer_multi."""
+    `temperature` is set; `repetition_penalty`, `seed` and `min_p` as in runtime.steer_multi."""
     b = await req.json()
     if off := _live_off():
         return off
@@ -894,7 +894,7 @@ async def agent_steer(req: Request):
     pushes = [(int(x["layer"]), int(x["n"]), float(x.get("dose", dose)), x.get("mode", mode)) for x in items]
 
     samp = {"temperature": float(b.get("temperature") or 0), "repetition_penalty": float(b.get("repetition_penalty") or 1.0),
-            "seed": int(b.get("seed") or 0)}
+            "seed": int(b.get("seed") or 0), "min_p": float(b.get("min_p") or 0)}
 
     def work():
         for row, delta in rt.steer_multi(pushes, [[{"role": "user", "content": b["prompt"]}]] * 3, int(b.get("max_new", 150)), **samp):

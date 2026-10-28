@@ -217,7 +217,7 @@ first. A published recipe needs real examples, verbatim from `steer`: the prompt
 unsteered text as `base_output`; never tidy or invent outputs. If it only works with a repetition penalty or sampling,
 say so in `sampling`. After running someone else's recipe, report it with `neuronary_reproduce`: `result` yes / partial / no,
 the steered output verbatim, the prompt, and in `note` any dose change it needed. When a recipe lists `sampling`, run `steer` with
-the same `temperature` / `repetition_penalty` (and a `seed`) before judging it, and say in the report which you used;
+the same `temperature` / `min_p` / `repetition_penalty` (and a `seed`) before judging it, and say in the report which you used;
 a loop under greedy decoding that a mild penalty (1.05–1.15) removes is a decoding artifact, not a failed recipe. For the person's own recipes, add an
 example with `neuronary_update` instead.
 
