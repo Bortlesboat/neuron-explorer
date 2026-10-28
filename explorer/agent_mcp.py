@@ -228,6 +228,16 @@ TOOLS = [
     {"name": "neuronary_comment", "description": "Comment on a neuronary recipe as the person. Only when they ask.",
      "inputSchema": {"type": "object", "properties": {"id": {"type": "string"}, "body": {"type": "string"},
                                                        "parent_id": {"type": "integer"}}, "required": ["id", "body"]}},
+    {"name": "neuronary_reproduce", "description": "Report your run of someone else's neuronary recipe as the person: whether "
+     "it reproduced (yes / partial / no), the steered output verbatim from `steer`, the prompt, and the setup. Shown on the "
+     "recipe and counted; one report per recipe per person, sending again replaces it. Not for the person's own recipes "
+     "(add an example with neuronary_update instead). Only when the person asks or agrees.",
+     "inputSchema": {"type": "object", "properties": {
+         "id": {"type": "string"}, "output": {"type": "string", "description": "the steered output, verbatim"},
+         "prompt": {"type": "string"}, "result": {"type": "string", "enum": ["yes", "partial", "no"], "default": "yes"},
+         "setup": {"type": "string", "description": "default: bf16 transformers (neuron explorer), greedy"},
+         "note": {"type": "string", "description": "dose changes, caveats, what it took to reproduce"}},
+                     "required": ["id", "output"]}},
     {"name": "neuronary_vote", "description": "Vote on a neuronary recipe as the person (1, -1, or 0 to clear). Only when "
      "they ask.",
      "inputSchema": {"type": "object", "properties": {"id": {"type": "string"},
@@ -310,6 +320,11 @@ def call(name, a):
         return neuronary("PATCH", f"/recipes/{a['id']}", {k: v for k, v in a.items() if k != "id"})
     if name == "neuronary_comment":
         return neuronary("POST", f"/recipes/{a['id']}/comments", {"body": a["body"], "parent_id": a.get("parent_id")})
+    if name == "neuronary_reproduce":
+        body = {"output": a["output"], "result": a.get("result", "yes"),
+                "setup": a.get("setup") or "bf16 transformers (neuron explorer), greedy"}
+        body.update({k: a[k] for k in ("prompt", "note") if a.get(k)})
+        return neuronary("POST", f"/recipes/{a['id']}/reproductions", body)
     if name == "neuronary_vote":
         return neuronary("POST", f"/recipes/{a['id']}/vote", {"value": a["value"]})
 

@@ -211,11 +211,13 @@ or deleting the person's own files.
 
 neuronary.org is a public dictionary of neuron steering recipes for this model. `neuronary_search` finds recipes by text
 or neuron id (`L14N8949`), `neuronary_get` downloads one with `steer_neurons` ready for `steer` (same dose units).
-Check it when a neuron you study might already be known. `neuronary_publish`, `neuronary_update`, `neuronary_comment` and
-`neuronary_vote` act publicly as the person: use them only when the person asks or agrees, and show them what you'll post
+Check it when a neuron you study might already be known. `neuronary_publish`, `neuronary_update`, `neuronary_comment`,
+`neuronary_reproduce` and `neuronary_vote` act publicly as the person: use them only when the person asks or agrees, and show them what you'll post
 first. A published recipe needs real examples, verbatim from `steer`: the prompt, the pushed-up text as `output`, the
 unsteered text as `base_output`; never tidy or invent outputs. If it only works with a repetition penalty or sampling,
-say so in `sampling`.
+say so in `sampling`. After running someone else's recipe, report it with `neuronary_reproduce`: `result` yes / partial / no,
+the steered output verbatim, the prompt, and in `note` any dose change it needed. For the person's own recipes, add an
+example with `neuronary_update` instead.
 
 ## This session
 
