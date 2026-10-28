@@ -62,3 +62,7 @@ and {free} × {+3}, plus one unsteered baseline per prompt.
 | `sweep/capture_prefill.py` | `captures/<run>.mlp_in.npy`: MLP input at the last prompt token at the run's capture layers, steered |
 
 `research_log.md` holds the findings and reasoning; `NOTES.md` the source notes.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
