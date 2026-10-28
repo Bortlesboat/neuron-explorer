@@ -1645,7 +1645,20 @@ async def _ensure_codex(c):
     return proc
 
 
+def _agent_files_mtime():
+    """When the agent's tools or instructions last changed (agent_mcp.py and the prompt files)."""
+    paths = [os.path.join(ROOT, "explorer", "agent_mcp.py"), AGENT_PROMPT, AGENT_METHOD, AGENT_LOCAL]
+    return max((os.path.getmtime(x) for x in paths if os.path.exists(x)), default=0)
+
+
 async def _ensure_proc(c):
+    import time
+    # a chat between turns picks up changed tools or instructions: its process restarts, resuming the conversation
+    proc = c.get("proc")
+    if proc is not None and proc.returncode is None and not c["busy"] and c.get("spawned", 0) < _agent_files_mtime():
+        await _end_chat(c)
+    if c.get("proc") is None or c["proc"].returncode is not None:
+        c["spawned"] = time.time()
     if c["agent"] == "codex":
         return await _ensure_codex(c)
     proc = c.get("proc")
@@ -1813,4 +1826,5 @@ def preload():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=PORT)
+    # chat event streams stay open indefinitely; on shutdown, close them after a few seconds instead of waiting
+    uvicorn.run(app, host="127.0.0.1", port=PORT, timeout_graceful_shutdown=3)
