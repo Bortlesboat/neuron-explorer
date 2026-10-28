@@ -226,10 +226,13 @@ TOOLS = [
          "mode": {"type": "string", "enum": ["add", "mul"], "default": "add"},
          "notes": {"type": "string"}, "source": {"type": "string"}},
                      "required": ["name", "description", "neurons", "tags", "examples"]}},
-    {"name": "neuronary_update", "description": "Edit one of the person's own neuronary recipes, e.g. add examples "
-     "(examples replaces the whole list). Only when the person asks.",
+    {"name": "neuronary_update", "description": "Edit one of the person's own neuronary recipes: add examples (examples replaces the whole "
+     "list), change the neurons or doses (neurons replaces them all; update the examples to match). Only when the person asks.",
      "inputSchema": {"type": "object", "properties": {"id": {"type": "string"}, "name": {"type": "string"},
                                                        "description": {"type": "string"},
+                                                       "neurons": {"type": "array", "description": "replaces the recipe's neurons and doses (same units as `steer`)",
+                                                                   "items": {"type": "object", "properties": {**LN, "dose": {"type": "number"}},
+                                                                             "required": ["layer", "n", "dose"]}},
                                                        "tags": {"type": "array", "items": {"type": "string"}},
                                                        "examples": {"type": "array", "items": {"type": "object"}},
                                                        "sampling": {"type": "object"}, "notes": {"type": "string"}},
@@ -326,7 +329,10 @@ def call(name, a):
             body["method"] = {"op": "mul"}
         return neuronary("POST", "/recipes", body)
     if name == "neuronary_update":
-        return neuronary("PATCH", f"/recipes/{a['id']}", {k: v for k, v in a.items() if k != "id"})
+        body = {k: v for k, v in a.items() if k not in ("id", "neurons")}
+        if a.get("neurons"):
+            body["neurons"] = [{"layer": int(x["layer"]), "neuron": int(x["n"]), "dose": float(x["dose"])} for x in a["neurons"]]
+        return neuronary("PATCH", f"/recipes/{a['id']}", body)
     if name == "neuronary_comment":
         return neuronary("POST", f"/recipes/{a['id']}/comments", {"body": a["body"], "parent_id": a.get("parent_id")})
     if name == "neuronary_reproduce":
